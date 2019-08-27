@@ -7,6 +7,10 @@ public class Queries {
      */
     public static final String TICKET_CREATE = "INSERT INTO {prefix}tickets ( reporter_id, reported_at, updated_at, open, location_x, location_y, location_z, location_world, assignee_id ) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ? )";
     /**
+     * id
+     */
+    public static final String TICKET_GET_BY_ID = "SELECT * FROM {prefix}tickets WHERE id = ?";
+    /**
      * updated_at, id
      */
     public static final String TICKET_UPDATE_UPDATED_AT = "UPDATE {prefix}ticket_comments SET updated_at = ? WHERE id = ?";

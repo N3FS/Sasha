@@ -1,4 +1,4 @@
-package uk.co.n3fs.sasha.ticket;
+package uk.co.n3fs.sasha.api.type;
 
 import co.aikar.idb.DbRow;
 import java.time.Instant;

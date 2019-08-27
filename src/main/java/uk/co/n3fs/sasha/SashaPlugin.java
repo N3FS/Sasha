@@ -13,7 +13,7 @@ import java.nio.file.Path;
 import javax.inject.Inject;
 import org.slf4j.Logger;
 import uk.co.n3fs.sasha.database.DatabaseManager;
-import uk.co.n3fs.sasha.ticket.TicketManager;
+import uk.co.n3fs.sasha.ticket.TicketManagerImpl;
 
 @Plugin(id = "sasha", name = "Sasha", version = "@VERSION@",
         description = "Ticket plugin for Velocity", authors = {"md678685"})
@@ -24,7 +24,7 @@ public class SashaPlugin {
     private final Path pluginDir;
     private final DatabaseManager dbManager;
     private UserCache cache;
-    private TicketManager ticketManager;
+    private TicketManagerImpl ticketManager;
 
     @Inject
     public SashaPlugin(ProxyServer server, Logger logger, @DataDirectory Path pluginDir) {
@@ -39,7 +39,7 @@ public class SashaPlugin {
         try {
             dbManager.setupDatabase();
             cache = new UserCache(server, dbManager);
-            ticketManager = new TicketManager(dbManager);
+            ticketManager = new TicketManagerImpl(dbManager);
         } catch (Exception e) {
             logger.error("Failed to set up database!", e);
             dbManager.close();

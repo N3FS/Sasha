@@ -1,22 +1,31 @@
 package uk.co.n3fs.sasha.ticket;
 
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import uk.co.n3fs.sasha.api.search.TicketSearchQuery;
+import uk.co.n3fs.sasha.api.search.TicketSearchView;
+import uk.co.n3fs.sasha.api.type.Location;
+import uk.co.n3fs.sasha.api.type.Subscription;
+import uk.co.n3fs.sasha.api.type.Ticket;
+import uk.co.n3fs.sasha.api.type.TicketComment;
 import uk.co.n3fs.sasha.database.DatabaseManager;
 
 import static uk.co.n3fs.sasha.database.Queries.*;
 
-public class TicketManager {
+public class TicketManagerImpl implements uk.co.n3fs.sasha.api.TicketManager {
 
     private final DatabaseManager dbManager;
 
-    public TicketManager(DatabaseManager dbManager) {
+    public TicketManagerImpl(DatabaseManager dbManager) {
         this.dbManager = dbManager;
     }
 
     // TODO: assigning, subscriptions, listing
 
+    @Override
     public Ticket createTicket(Ticket ticket) {
         if (ticket.getId() != null) throw new RuntimeException("Cannot create ticket that already exists");
 
@@ -45,6 +54,32 @@ public class TicketManager {
         return success ? Ticket.Builder.from(ticket).setId((int) ticketId[0]).build() : null;
     }
 
+    @Override
+    public Ticket getTicket(int id) {
+        try {
+            return Ticket.Builder.from(dbManager.getDatabase().getFirstRow(dbManager.replace(TICKET_GET_BY_ID), id)).build();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    @Override
+    public TicketSearchView searchTickets(TicketSearchQuery query) {
+        List<Ticket> tickets = Collections.emptyList();
+        try {
+            tickets = dbManager.getDatabase()
+                .getResults(query.getStatement(), query.getParams())
+                .stream()
+                .map(row -> Ticket.Builder.from(row).build())
+                .collect(Collectors.toList());
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return new TicketSearchView(tickets, 10);
+    }
+
+    @Override
     public TicketComment createTicketComment(TicketComment comment) {
         if (comment.getId() != null) throw new RuntimeException("Cannot create comment that already exists");
 
@@ -66,16 +101,12 @@ public class TicketManager {
             int nextConversationId = Collections.max(conversationIds) + 1;
 
             int rows = stm.executeUpdateQuery(insertCommentQuery, ticketId, authorId, nextConversationId, writtenAt, message, newState);
-            if (rows < 1) {
-                return false;
-            }
+            if (rows != 1) return false;
             commentId[0] = stm.getLastInsertId();
 
             if (newState != null) {
                 rows = stm.executeUpdateQuery(updateTicketOpenQuery, newState, ticketId);
-                if (rows < 1) {
-                    return false;
-                }
+                if (rows != 1) return false;
             }
 
             rows = stm.executeUpdateQuery(updateTicketTimestampQuery, writtenAt, ticketId);
@@ -85,6 +116,7 @@ public class TicketManager {
         return success ? TicketComment.Builder.from(comment).setId((int) commentId[0]).build() : null;
     }
 
+    @Override
     public Subscription createSubscription(Subscription sub) {
         if (sub.getId() != null) throw new RuntimeException("Cannot create subscription that already exists");
 
