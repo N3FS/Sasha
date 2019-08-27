@@ -1,27 +1,27 @@
 package uk.co.n3fs.sasha.ticket;
 
-import java.sql.SQLException;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import uk.co.n3fs.sasha.UserCache;
 import uk.co.n3fs.sasha.database.DatabaseManager;
 
+import static uk.co.n3fs.sasha.database.Queries.*;
+
 public class TicketManager {
 
     private final DatabaseManager dbManager;
 
-    public TicketManager(DatabaseManager dbManager, UserCache userCache) {
+    public TicketManager(DatabaseManager dbManager) {
         this.dbManager = dbManager;
     }
 
-    // TODO: creation, updates, messages, assigning, subscriptions
-    // TODO later: companion plugin
+    // TODO: assigning, subscriptions, listing
 
     public Ticket createTicket(Ticket ticket) {
-        if (ticket.getId() != null) throw new RuntimeException("Cannot create ticket that already has an ID.");
+        if (ticket.getId() != null) throw new RuntimeException("Cannot create ticket that already has an ID");
 
-        String query = dbManager.replace("INSERT INTO {prefix}tickets ( reporter_id, reported_at, updated_at, open, location_x, location_y, location_z, location_world, assignee_id ) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ? )");
+        String insertTicketQuery = dbManager.replace(TICKET_CREATE);
 
         String reporter = ticket.getReporter().toString();
         Instant reportedAt = ticket.getReportedAt();
@@ -34,20 +34,25 @@ public class TicketManager {
         Integer y = location != null ? location.getY() : null;
         Integer z = location != null ? location.getZ() : null;
 
-        try {
-            long id = dbManager.getDatabase().executeInsert(query, reporter, reportedAt, updatedAt, open, x, y, z, world, assignee);
-            return Ticket.Builder.from(ticket).setId((int) id).build();
-        } catch (SQLException e) {
-            throw new RuntimeException("Error inserting ticket into database", e);
-        }
+        final long[] ticketId = new long[1];
+
+        boolean success = dbManager.getDatabase().createTransaction(stm -> {
+            int rows = stm.executeUpdateQuery(insertTicketQuery, reporter, reportedAt, updatedAt, open, x, y, z, world, assignee);
+            if (rows != 1) return false;
+            ticketId[0] = stm.getLastInsertId();
+            return true;
+        });
+
+        return success ? Ticket.Builder.from(ticket).setId((int) ticketId[0]).build() : null;
     }
 
     public TicketComment createTicketComment(TicketComment comment) {
-        if (comment.getId() != null) throw new RuntimeException("Cannot create ticket that already has an ID.");
+        if (comment.getId() != null) throw new RuntimeException("Cannot create comment that already has an ID");
 
-        String conversationIdsQuery = dbManager.replace("SELECT conversation_id FROM {prefix}ticket_comments WHERE ticket_id = ?");
-        String insertCommentQuery = dbManager.replace("INSERT INTO {prefix}ticket_comments ( ticket_id, author_id, conversation_id, written_at, message, new_open_state ) VALUES ( ?, ?, ?, ?, ?, ? )");
-        String updateTicketQuery = dbManager.replace("UPDATE {prefix}ticket_comments SET updated_at = ? WHERE id = ?");
+        String conversationIdsQuery = dbManager.replace(COMMENT_LIST_CONVERSATION_IDS);
+        String insertCommentQuery = dbManager.replace(COMMENT_CREATE);
+        String updateTicketTimestampQuery = dbManager.replace(TICKET_UPDATE_UPDATED_AT);
+        String updateTicketOpenQuery = dbManager.replace(TICKET_UPDATE_OPEN_STATE);
 
         int ticketId = comment.getTicket();
         String authorId = comment.getAuthor().toString();
@@ -55,7 +60,7 @@ public class TicketManager {
         String message = comment.getMessage();
         Boolean newState = comment.getNewState();
 
-        final int[] commentId = new int[1];
+        final long[] commentId = new long[1];
 
         boolean success = dbManager.getDatabase().createTransaction(stm -> {
             List<Integer> conversationIds = stm.executeQueryGetFirstColumnResults(conversationIdsQuery, ticketId);
@@ -66,12 +71,19 @@ public class TicketManager {
             if (rows < 1) {
                 return false;
             }
-            commentId[0] = stm.getLastInsertId().intValue();
+            commentId[0] = stm.getLastInsertId();
 
-            rows = stm.executeUpdateQuery(updateTicketQuery, writtenAt, ticketId);
+            if (newState != null) {
+                rows = stm.executeUpdateQuery(updateTicketOpenQuery, newState, ticketId);
+                if (rows < 1) {
+                    return false;
+                }
+            }
+
+            rows = stm.executeUpdateQuery(updateTicketTimestampQuery, writtenAt, ticketId);
             return rows == 1;
         });
-        
-        return success ? TicketComment.Builder.from(comment).setId(commentId[0]).build() : null;
+
+        return success ? TicketComment.Builder.from(comment).setId((int) commentId[0]).build() : null;
     }
 }

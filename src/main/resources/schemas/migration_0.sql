@@ -29,7 +29,7 @@ CREATE TABLE `{prefix}ticket_comments` (
 CREATE TABLE `{prefix}ticket_subscriptions` (
     id          INT AUTO_INCREMENT PRIMARY KEY NOT NULL,
     ticket_id   INT                            NOT NULL,
-    user_id     INT                            NOT NULL,
+    user_id     VARCHAR(36)                    NOT NULL,
     last_seen   TIMESTAMP WITH TIME ZONE       NOT NULL,
 );
 
