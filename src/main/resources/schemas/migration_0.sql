@@ -18,12 +18,12 @@ CREATE TABLE `{prefix}tickets` (
 
 CREATE TABLE `{prefix}ticket_comments` (
     id              INT AUTO_INCREMENT PRIMARY KEY NOT NULL,
-    conversation_id INT                            NOT NULL,
     ticket_id       INT                            NOT NULL,
     author_id       VARCHAR(36)                    NOT NULL,
+    conversation_id INT                            NOT NULL,
     written_at      TIMESTAMP WITH TIME ZONE       NOT NULL,
     message         TEXT                           NOT NULL,
-    open_change     BOOL
+    new_open_state  BOOL
 );
 
 CREATE TABLE `{prefix}ticket_subscriptions` (

@@ -15,12 +15,12 @@ public class Ticket {
     private final Location location;
     private final UUID assignee;
 
-    private Ticket(int id, UUID reporter, Instant reportedAt, Instant updatedAt, boolean open, Location location, UUID assignee) {
+    private Ticket(int id, UUID reporter, Instant reportedAt, Instant updatedAt, Boolean open, Location location, UUID assignee) {
         this.id = id;
-        this.reporter = reporter;
-        this.reportedAt = reportedAt;
-        this.updatedAt = updatedAt;
-        this.open = open;
+        this.reporter = Objects.requireNonNull(reporter, "Missing reporter!");
+        this.reportedAt = Objects.requireNonNull(reportedAt, "Missing report timestamp!");
+        this.updatedAt = Objects.requireNonNull(updatedAt, "Missing updated timestamp!");
+        this.open = Objects.requireNonNull(open, "Missing open state!");
         this.location = location;
         this.assignee = assignee;
     }
@@ -110,10 +110,6 @@ public class Ticket {
         }
 
         public Ticket build() {
-            Objects.requireNonNull(reporter, "Missing reporter!");
-            Objects.requireNonNull(reportedAt, "Missing report timestamp!");
-            Objects.requireNonNull(updatedAt, "Missing updated timestamp!");
-            Objects.requireNonNull(open, "Missing open state!");
             return new Ticket(id, reporter, reportedAt, updatedAt, open, location, assignee);
         }
 
