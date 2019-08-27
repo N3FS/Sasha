@@ -23,4 +23,9 @@ public class Queries {
      * ticket_id
      */
     public static final String COMMENT_LIST_CONVERSATION_IDS = "SELECT conversation_id FROM {prefix}ticket_comments WHERE ticket_id = ?";
+
+    /**
+     * ticket_id, user_id, last_seen
+     */
+    public static final String SUBSCRIPTION_CREATE = "INSERT INTO {prefix}ticket_subscriptions ( ticket_id, user_id, last_seen ) VALUES ( ?, ?, ? )";
 }

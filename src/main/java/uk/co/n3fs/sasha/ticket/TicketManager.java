@@ -3,7 +3,6 @@ package uk.co.n3fs.sasha.ticket;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
-import uk.co.n3fs.sasha.UserCache;
 import uk.co.n3fs.sasha.database.DatabaseManager;
 
 import static uk.co.n3fs.sasha.database.Queries.*;
@@ -19,7 +18,7 @@ public class TicketManager {
     // TODO: assigning, subscriptions, listing
 
     public Ticket createTicket(Ticket ticket) {
-        if (ticket.getId() != null) throw new RuntimeException("Cannot create ticket that already has an ID");
+        if (ticket.getId() != null) throw new RuntimeException("Cannot create ticket that already exists");
 
         String insertTicketQuery = dbManager.replace(TICKET_CREATE);
 
@@ -47,7 +46,7 @@ public class TicketManager {
     }
 
     public TicketComment createTicketComment(TicketComment comment) {
-        if (comment.getId() != null) throw new RuntimeException("Cannot create comment that already has an ID");
+        if (comment.getId() != null) throw new RuntimeException("Cannot create comment that already exists");
 
         String conversationIdsQuery = dbManager.replace(COMMENT_LIST_CONVERSATION_IDS);
         String insertCommentQuery = dbManager.replace(COMMENT_CREATE);
@@ -66,8 +65,7 @@ public class TicketManager {
             List<Integer> conversationIds = stm.executeQueryGetFirstColumnResults(conversationIdsQuery, ticketId);
             int nextConversationId = Collections.max(conversationIds) + 1;
 
-            int rows;
-            rows = stm.executeUpdateQuery(insertCommentQuery, ticketId, authorId, nextConversationId, writtenAt, message, newState);
+            int rows = stm.executeUpdateQuery(insertCommentQuery, ticketId, authorId, nextConversationId, writtenAt, message, newState);
             if (rows < 1) {
                 return false;
             }
@@ -85,5 +83,26 @@ public class TicketManager {
         });
 
         return success ? TicketComment.Builder.from(comment).setId((int) commentId[0]).build() : null;
+    }
+
+    public Subscription createSubscription(Subscription sub) {
+        if (sub.getId() != null) throw new RuntimeException("Cannot create subscription that already exists");
+
+        String insertSubQuery = dbManager.replace(SUBSCRIPTION_CREATE);
+
+        int ticketId = sub.getTicket();
+        String userId = sub.getUser().toString();
+        Instant lastSeen = sub.getLastSeen();
+
+        final long[] subId = new long[1];
+
+        boolean success = dbManager.getDatabase().createTransaction(stm -> {
+            int rows = stm.executeUpdateQuery(insertSubQuery, ticketId, userId, lastSeen);
+            if (rows != 1) return false;
+            subId[0] = stm.getLastInsertId();
+            return true;
+        });
+
+        return success ? Subscription.Builder.from(sub).setId((int) subId[0]).build() : null;
     }
 }
